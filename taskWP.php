@@ -62,7 +62,7 @@ class taskWP {
 	    /* Loop through each available task */
       	foreach($this->tasks as $name => $task){
 
-      		if(in_array($name, $this->get_completed_tasks()))
+      		if(in_array($name, $this->get_completed_tasks()) and !($_GET['force_tasks'] and is_admin()))
       			continue; // This task is completed so we continue the loop
 
 			if(is_callable($task['handler'])){
