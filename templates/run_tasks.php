@@ -1,5 +1,7 @@
 <?php
 
+define('TASKWP_FORCE_RUN', true);
+
 $tasks 		= array_map('trim', explode(',', get_query_var('tasks')));
 $task_id 	= get_query_var('taskwp_id');
 

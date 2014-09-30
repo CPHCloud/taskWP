@@ -111,7 +111,7 @@ class taskWP {
 
     	if(is_callable($task['handler'])){
 
-			if($task['hook']){
+			if($task['hook'] and !defined('TASKWP_FORCE_RUN')){
 
 				if(!$prio = $task['priority'])
 					$prio = 10;
@@ -120,7 +120,7 @@ class taskWP {
 					$args = 1;
 
 				add_action($task['hook'], $task['handler'], $prio, $args);
-			
+
 			}
 			else {
 
