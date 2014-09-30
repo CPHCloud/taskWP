@@ -10,13 +10,43 @@ if(!class_exists('taskWP')){
 class taskWP {
 	
 	function __construct($id){
+		$this->path  		= dirname(__FILE__);
 		$this->id 			= $id;
 		$this->option_key 	= 'taskwp_completed_'.md5($id);
 		$this->tasks 		= array();
 		$this->hooks();
+		$this->update_reference();
+
+	}
+
+	function update_reference(){
+		$GLOBALS['taskwp_references'][$this->id] = &$this;
 	}
 
 	function hooks(){
+		include 'inc/routeWP/routeWP.php';
+		$this->router = new routeWP();
+		$this->setup_routes();
+	}
+
+	function setup_routes(){
+
+		$this->router->add_route(array(
+			'pattern' 		=> '~/tasks/([^\/]{1,})/run/([^\/]{1,})/?$~i',
+			'template' 		=> $this->path.'/templates/run_tasks.php',
+			'query_vars' 	=> array(
+				'taskwp_id'		=> '$1',
+				'tasks' 	 	=> '$2'
+				)
+			));
+
+		$this->router->add_route(array(
+			'pattern' 		=> '~/tasks/([^\/]{1,})/list/?$~i',
+			'template' 		=> $this->path.'/templates/list_tasks.php',
+			'query_vars' 	=> array(
+				'taskwp_id'		=> '$1'
+				)
+			));
 
 	}
 
@@ -42,6 +72,7 @@ class taskWP {
 
 		if($updated = update_option($this->option_key, $completed)){
 			$this->completed = $completed;
+			do_action('taskWP/task/complete', $name);
 		}
 
 		return $updated;
@@ -54,7 +85,7 @@ class taskWP {
 	 *
 	 * @return void
 	 **/
-	function run_tasks(){
+	function run_tasks($force = false){
 	    
 	    if(empty($this->tasks))
 	    	return false;
@@ -62,42 +93,51 @@ class taskWP {
 	    /* Loop through each available task */
       	foreach($this->tasks as $name => $task){
 
-      		if(in_array($name, $this->get_completed_tasks()) and !($_GET['force_tasks'] and is_admin()))
+      		if(in_array($name, $this->get_completed_tasks()) and !$force and !($_GET['force_tasks'] and is_admin()))
       			continue; // This task is completed so we continue the loop
 
-			if(is_callable($task['handler'])){
-
-				if($task['hook']){
-
-					if(!$prio = $task['priority'])
-						$prio = 10;
-
-					if(!$args = $task['arguments'])
-						$args = 1;
-
-					add_action($task['hook'], $task['handler'], $prio, $args);
-				
-				}
-				else {
-
-					add_action('taskWP/run_task', $task['handler']); // Handler is callable so we hook it to the taskWP/run_task
-					do_action('taskWP/run_task'); // Run the action to execute the handler callback
-					remove_action('taskWP/run_task', $task['handler']); // Remove the handler again
-
-				}
-
-			}
-			else{
-				if(file_exists($task['handler']))
-					include_once $task['handler']; // Handler is a file. Include it.
-			}
-
-			$this->complete_task($name);
+			$this->run_task($name);
 
       	}
     
 	    $this->clean_completed_tasks();
 		
+    }
+
+
+    function run_task($name){
+
+    	$task = $this->tasks[$name];
+
+    	if(is_callable($task['handler'])){
+
+			if($task['hook']){
+
+				if(!$prio = $task['priority'])
+					$prio = 10;
+
+				if(!$args = $task['arguments'])
+					$args = 1;
+
+				add_action($task['hook'], $task['handler'], $prio, $args);
+			
+			}
+			else {
+
+				add_action('taskWP/run_task', $task['handler']); // Handler is callable so we hook it to the taskWP/run_task
+				do_action('taskWP/run_task'); // Run the action to execute the handler callback
+				remove_action('taskWP/run_task', $task['handler']); // Remove the handler again
+
+			}
+
+		}
+		else{
+			if(file_exists($task['handler']))
+				include_once $task['handler']; // Handler is a file. Include it.
+		}
+
+		$this->complete_task($name);
+
     }
 
 
@@ -128,6 +168,12 @@ class taskWP {
 
 	}
 
+}
+
+if(!function_exists('taskwp')){
+	function taskwp($id){
+		return $GLOBALS['taskwp_references'][$id];
+	}
 }
 
 }
