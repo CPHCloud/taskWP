@@ -68,6 +68,9 @@ class taskWP {
 	function complete_task($name){
 		
 		$completed 		= $this->get_completed_tasks();
+		if(array_search($name, $completed))
+			return $completed;
+
 		$completed[] 	= $name;
 
 		if($updated = update_option($this->option_key, $completed)){
